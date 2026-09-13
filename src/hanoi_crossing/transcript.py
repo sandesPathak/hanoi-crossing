@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Any, Final, assert_never
 
 from hanoi_crossing.engine import (
     Action,
     Lift,
+    MatchResult,
     Place,
     Player,
     Pole,
@@ -69,6 +70,46 @@ def parse(raw: str | bytes) -> Transcript:
         )
 
     return Transcript(disks_per_player=disks, turn_order=turn_order, moves=moves)
+
+
+def render(result: MatchResult) -> dict[str, Any]:
+    """Shape a finished match into the JSON document the CLIs print."""
+    return {
+        "disks_per_player": result.final_state.disks_per_player,
+        "turns_played": result.turns_played,
+        "illegal_actions": result.illegal_actions,
+        "outcome": {
+            "kind": str(result.outcome.kind),
+            "players": [str(player) for player in result.outcome.players],
+        },
+        "final_state": {
+            # Poles are listed bottom disk first, matching the engine's own ordering.
+            "poles": {str(pole): list(result.final_state.poles[pole]) for pole in Pole},
+            "hands": {str(player): result.final_state.hands[player] for player in Player},
+        },
+    }
+
+
+def render_transcript(transcript: Transcript) -> dict[str, Any]:
+    """Shape a Transcript back into the input format, so a generated game can be replayed."""
+    return {
+        "version": SUPPORTED_VERSION,
+        "disks_per_player": transcript.disks_per_player,
+        "turn_order": [str(player) for player in transcript.turn_order],
+        "moves": [_render_move(move) for move in transcript.moves],
+    }
+
+
+def _render_move(move: Action) -> dict[str, str]:
+    match move:
+        case Skip():
+            return {"action": "skip"}
+        case Lift(pole=pole):
+            return {"action": "lift", "pole": str(pole)}
+        case Place(pole=pole):
+            return {"action": "place", "pole": str(pole)}
+        case _:  # pragma: no cover - exhaustive over Action; guards future variants
+            assert_never(move)
 
 
 def _reject_unknown_keys(value: dict[str, Any], allowed: frozenset[str], where: str) -> None:

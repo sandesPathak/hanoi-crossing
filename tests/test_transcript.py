@@ -15,6 +15,7 @@ from hanoi_crossing.transcript import (
     Transcript,
     TranscriptError,
     parse,
+    render_transcript,
 )
 
 
@@ -56,6 +57,12 @@ def test_bytes_are_accepted_as_well_as_text() -> None:
 def test_a_skip_needs_no_pole() -> None:
     parsed = parse(document(turn_order=["A"], moves=[{"action": "skip"}]))
     assert parsed.moves == (Skip(),)
+
+
+def test_rendering_a_transcript_round_trips_through_the_parser() -> None:
+    original = parse(document())
+    reparsed = parse(json.dumps(render_transcript(original)))
+    assert reparsed == original
 
 
 # -------------------------------------------------------------- malformed input
