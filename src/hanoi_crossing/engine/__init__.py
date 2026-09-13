@@ -4,6 +4,13 @@ The public surface is deliberately small: build a state, observe it as one playe
 enumerate that player's legal actions, apply one. Everything else is built on those.
 """
 
+from hanoi_crossing.engine.match import (
+    MatchResult,
+    Outcome,
+    OutcomeKind,
+    Policy,
+    run_match,
+)
 from hanoi_crossing.engine.model import (
     VISIBLE_POLES,
     Action,
@@ -34,10 +41,14 @@ __all__ = [
     "GameFinishedError",
     "GameState",
     "Lift",
+    "MatchResult",
     "Observation",
+    "Outcome",
+    "OutcomeKind",
     "Place",
     "Player",
     "Pole",
+    "Policy",
     "Skip",
     "Stack",
     "StepResult",
@@ -46,6 +57,7 @@ __all__ = [
     "initial_state",
     "legal_actions",
     "observe",
+    "run_match",
     "step",
     "winners",
 ]
