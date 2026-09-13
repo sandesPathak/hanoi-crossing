@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets — never commit these
+.env
+.env.*
+*.pem
+*.key
+
+# The company's assignment brief is their document, not ours to publish.
+HANOI_CROSSING-*.md
+requirements-audit.txt

@@ -1,0 +1,129 @@
+[project]
+name = "hanoi-crossing"
+version = "0.1.0"
+description = "Engine for Hanoi Crossing, a two-player Tower of Hanoi variant with a shared pole"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Sandesh Pathak", email = "pathaksandesh025@gmail.com" }]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+# Deliberately empty. The engine and both frontends run on the standard library
+# alone, so the deployed artefact has no third-party supply chain at all.
+dependencies = []
+
+[project.scripts]
+hanoi-replay = "hanoi_crossing.cli.replay:main"
+hanoi-random = "hanoi_crossing.cli.random_play:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "hypothesis>=6.122",
+  "mypy>=1.14",
+  "ruff>=0.9",
+  "pip-audit>=2.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hanoi_crossing"]
+
+# ---------------------------------------------------------------------------
+# Lint / format
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "F",    # pyflakes
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "I",    # import sorting
+  "N",    # naming
+  "UP",   # pyupgrade
+  "ANN",  # missing annotations
+  "S",    # flake8-bandit: security lint
+  "FBT",  # boolean-trap arguments
+  "B",    # bugbear
+  "A",    # shadowed builtins
+  "C4",   # comprehensions
+  "T20",  # stray print/pprint
+  "PT",   # pytest style
+  "RET",  # return simplification
+  "SIM",  # simplification
+  "ARG",  # unused arguments
+  "PTH",  # prefer pathlib
+  "ERA",  # commented-out code
+  "PL",   # pylint
+  "TRY",  # exception antipatterns
+  "PERF", # performance antipatterns
+  "RUF",  # ruff-specific
+]
+ignore = [
+  # ruff format owns line wrapping; E501 double-reports what it already fixed.
+  "E501",
+  # A message written at the raise site can name the offending value. Hoisting it into
+  # the exception class to satisfy this rule would make the error less useful, not more.
+  "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The CLI frontends exist to write to stdout.
+"src/hanoi_crossing/cli/*" = ["T20"]
+# Tests assert, use literals, and reach into internals on purpose. `random` here seeds
+# reproducible property generation, not anything cryptographic, and parametrised cases
+# legitimately take bare bools.
+# ANN401: parser tests feed deliberately arbitrary junk across the trust boundary, so
+# `Any` is the accurate type for those parameters rather than a gap in the annotations.
+"tests/*" = ["S101", "PLR2004", "SLF001", "S311", "FBT001", "FBT002", "ANN401"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+# ---------------------------------------------------------------------------
+# Types
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests"]
+strict = true
+warn_unreachable = true
+enable_error_code = [
+  "redundant-expr",
+  "possibly-undefined",
+  "truthy-bool",
+  "ignore-without-code",
+]
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+  "-q",
+  "--strict-markers",
+  "--strict-config",
+  "--cov=hanoi_crossing",
+  "--cov-report=term-missing",
+  "--cov-fail-under=90",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/hanoi_crossing"]
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
