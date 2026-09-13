@@ -8,6 +8,7 @@ holding thousands of concurrent games without modification.
 from __future__ import annotations
 
 from types import MappingProxyType
+from typing import assert_never
 
 from hanoi_crossing.engine.model import (
     VISIBLE_POLES,
@@ -17,9 +18,19 @@ from hanoi_crossing.engine.model import (
     Observation,
     Place,
     Player,
+    Pole,
     Skip,
     Stack,
+    StepResult,
 )
+
+
+class GameFinishedError(RuntimeError):
+    """Raised when an action is applied to a state that has already been won.
+
+    This is a caller bug rather than a rule violation, so it raises instead of
+    coming back as an illegal action.
+    """
 
 
 def observe(state: GameState, player: Player) -> Observation:
@@ -59,3 +70,97 @@ def legal_actions(observation: Observation) -> tuple[Action, ...]:
     # Skip is always available, and comes last so the interesting moves read first.
     moves.append(Skip())
     return tuple(moves)
+
+
+def has_won(state: GameState, player: Player) -> bool:
+    """The brief's condition: hand empty, and of this player's poles only pole 3 has disks.
+
+    Note what this does *not* require: that the disks on pole 3 are the player's own, or
+    that all N of them are there. Read literally, a player whose disks were carried off
+    through the shared pole can still win with whatever remains. That reading is kept --
+    see the design notes in the README.
+    """
+    if state.hands[player] is not None:
+        return False
+    home, shared, goal = VISIBLE_POLES[player]
+    return not state.poles[home] and not state.poles[shared] and bool(state.poles[goal])
+
+
+def winners(state: GameState) -> frozenset[Player]:
+    """Every player satisfying the win condition in this state.
+
+    Evaluated as a predicate over the board, not as a consequence of the acting player's
+    move. Because the shared pole must be clear to win, one player can be tipped over the
+    line by their opponent lifting the last disk off it -- so both players are checked
+    after every action, and a state satisfying both is a draw.
+    """
+    return frozenset(player for player in Player if has_won(state, player))
+
+
+def step(state: GameState, player: Player, action: Action) -> StepResult:
+    """Apply one action on `player`'s turn.
+
+    An illegal action is not an error. The rules say it wastes the turn, so the original
+    state comes back with `legal=False` and the caller counts it.
+    """
+    if winners(state):
+        raise GameFinishedError("the game is already won; no further actions apply")
+
+    applied = _apply(state, player, action)
+    resolved = state if applied is None else applied
+    return StepResult(state=resolved, legal=applied is not None, winners=winners(resolved))
+
+
+def _apply(state: GameState, player: Player, action: Action) -> GameState | None:
+    """Return the state after `action`, or None if the rules reject it."""
+    match action:
+        case Skip():
+            return state
+        case Lift(pole=pole):
+            return _lift(state, player, pole)
+        case Place(pole=pole):
+            return _place(state, player, pole)
+        case _:  # pragma: no cover - exhaustive over Action; guards future variants
+            assert_never(action)
+
+
+def _lift(state: GameState, player: Player, pole: Pole) -> GameState | None:
+    if pole not in VISIBLE_POLES[player]:
+        return None
+    if state.hands[player] is not None:
+        return None
+    stack = state.poles[pole]
+    if not stack:
+        return None
+    return _with(state, pole, stack[:-1], player, stack[-1])
+
+
+def _place(state: GameState, player: Player, pole: Pole) -> GameState | None:
+    if pole not in VISIBLE_POLES[player]:
+        return None
+    held = state.hands[player]
+    if held is None:
+        return None
+    stack = state.poles[pole]
+    if not can_place_on(stack, held):
+        return None
+    return _with(state, pole, (*stack, held), player, None)
+
+
+def _with(
+    state: GameState,
+    pole: Pole,
+    stack: Stack,
+    player: Player,
+    holding: int | None,
+) -> GameState:
+    """Copy the state with one pole and one hand replaced."""
+    poles = dict(state.poles)
+    poles[pole] = stack
+    hands = dict(state.hands)
+    hands[player] = holding
+    return GameState(
+        poles=MappingProxyType(poles),
+        hands=MappingProxyType(hands),
+        disks_per_player=state.disks_per_player,
+    )

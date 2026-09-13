@@ -18,11 +18,20 @@ from hanoi_crossing.engine.model import (
     StepResult,
     initial_state,
 )
-from hanoi_crossing.engine.rules import can_place_on, legal_actions, observe
+from hanoi_crossing.engine.rules import (
+    GameFinishedError,
+    can_place_on,
+    has_won,
+    legal_actions,
+    observe,
+    step,
+    winners,
+)
 
 __all__ = [
     "VISIBLE_POLES",
     "Action",
+    "GameFinishedError",
     "GameState",
     "Lift",
     "Observation",
@@ -33,7 +42,10 @@ __all__ = [
     "Stack",
     "StepResult",
     "can_place_on",
+    "has_won",
     "initial_state",
     "legal_actions",
     "observe",
+    "step",
+    "winners",
 ]
