@@ -1,0 +1,35 @@
+"""The Hanoi Crossing engine.
+
+The public surface is deliberately small: build a state, observe it as one player,
+enumerate that player's legal actions, apply one. Everything else is built on those.
+"""
+
+from hanoi_crossing.engine.model import (
+    VISIBLE_POLES,
+    Action,
+    GameState,
+    Lift,
+    Observation,
+    Place,
+    Player,
+    Pole,
+    Skip,
+    Stack,
+    StepResult,
+    initial_state,
+)
+
+__all__ = [
+    "VISIBLE_POLES",
+    "Action",
+    "GameState",
+    "Lift",
+    "Observation",
+    "Place",
+    "Player",
+    "Pole",
+    "Skip",
+    "Stack",
+    "StepResult",
+    "initial_state",
+]

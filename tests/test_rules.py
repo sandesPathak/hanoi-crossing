@@ -1,0 +1,48 @@
+"""Rules tests: the brief's worked example, every illegal branch, and the win predicate."""
+
+from __future__ import annotations
+
+import pytest
+
+from hanoi_crossing.engine import (
+    GameState,
+    Player,
+    Pole,
+    initial_state,
+)
+
+
+def board(**poles: tuple[int, ...]) -> GameState:
+    """Build a state from pole names, defaulting anything unnamed to empty."""
+    filled = {pole: poles.get(pole.name.lower(), ()) for pole in Pole}
+    hands: dict[Player, int | None] = {Player.A: None, Player.B: None}
+    return GameState(poles=filled, hands=hands, disks_per_player=1)
+
+
+def holding(state: GameState, player: Player, disk: int | None) -> GameState:
+    hands = dict(state.hands)
+    hands[player] = disk
+    return GameState(poles=state.poles, hands=hands, disks_per_player=state.disks_per_player)
+
+
+# --------------------------------------------------------------------------- setup
+
+
+def test_initial_state_splits_disks_by_parity_largest_at_bottom() -> None:
+    state = initial_state(3)
+    assert state.poles[Pole.A_HOME] == (5, 3, 1)
+    assert state.poles[Pole.B_HOME] == (6, 4, 2)
+    assert state.poles[Pole.SHARED] == ()
+    assert state.hands == {Player.A: None, Player.B: None}
+
+
+@pytest.mark.parametrize("count", [0, -1])
+def test_initial_state_rejects_a_non_positive_disk_count(count: int) -> None:
+    with pytest.raises(ValueError, match="at least one disk"):
+        initial_state(count)
+
+
+def test_one_disk_each_is_the_smallest_legal_game() -> None:
+    state = initial_state(1)
+    assert state.poles[Pole.A_HOME] == (1,)
+    assert state.poles[Pole.B_HOME] == (2,)
