@@ -6,9 +6,14 @@ import pytest
 
 from hanoi_crossing.engine import (
     GameState,
+    Lift,
+    Place,
     Player,
     Pole,
+    Skip,
+    can_place_on,
     initial_state,
+    legal_actions,
     observe,
 )
 
@@ -63,3 +68,34 @@ def test_observation_hides_the_opponents_hand() -> None:
     state = holding(initial_state(2), Player.B, 2)
     assert observe(state, Player.A).holding is None
     assert observe(state, Player.B).holding == 2
+
+
+# ------------------------------------------------------------------- legal actions
+
+
+def test_an_empty_handed_player_may_lift_from_any_non_empty_visible_pole() -> None:
+    actions = legal_actions(observe(initial_state(2), Player.A))
+    assert set(actions) == {Lift(Pole.A_HOME), Skip()}
+
+
+def test_placement_is_blocked_by_a_smaller_disk_underneath() -> None:
+    state = holding(board(a_home=(3,), a_goal=(1,)), Player.A, 5)
+    actions = legal_actions(observe(state, Player.A))
+    # 5 fits on the empty shared pole only: 3 and 1 are both smaller.
+    assert set(actions) == {Place(Pole.SHARED), Skip()}
+
+
+def test_skip_is_always_available() -> None:
+    empty = board()
+    assert Skip() in legal_actions(observe(empty, Player.A))
+    assert Skip() in legal_actions(observe(holding(empty, Player.A, 1), Player.A))
+
+
+@pytest.mark.parametrize(
+    ("stack", "disk", "allowed"),
+    [((), 5, True), ((6,), 5, True), ((5,), 5, False), ((4,), 5, False)],
+)
+def test_placement_rule_needs_a_strictly_larger_disk(
+    stack: tuple[int, ...], disk: int, allowed: bool
+) -> None:
+    assert can_place_on(stack, disk) is allowed
