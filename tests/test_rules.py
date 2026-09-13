@@ -9,6 +9,7 @@ from hanoi_crossing.engine import (
     Player,
     Pole,
     initial_state,
+    observe,
 )
 
 
@@ -46,3 +47,19 @@ def test_one_disk_each_is_the_smallest_legal_game() -> None:
     state = initial_state(1)
     assert state.poles[Pole.A_HOME] == (1,)
     assert state.poles[Pole.B_HOME] == (2,)
+
+
+# --------------------------------------------------------------------- observation
+
+
+def test_observation_hides_the_opponents_outer_poles() -> None:
+    seen = observe(initial_state(2), Player.A)
+    assert set(seen.poles) == {Pole.A_HOME, Pole.SHARED, Pole.A_GOAL}
+    assert Pole.B_HOME not in seen.poles
+    assert Pole.B_GOAL not in seen.poles
+
+
+def test_observation_hides_the_opponents_hand() -> None:
+    state = holding(initial_state(2), Player.B, 2)
+    assert observe(state, Player.A).holding is None
+    assert observe(state, Player.B).holding == 2

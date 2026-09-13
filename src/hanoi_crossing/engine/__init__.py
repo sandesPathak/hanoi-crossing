@@ -18,6 +18,7 @@ from hanoi_crossing.engine.model import (
     StepResult,
     initial_state,
 )
+from hanoi_crossing.engine.rules import observe
 
 __all__ = [
     "VISIBLE_POLES",
@@ -32,4 +33,5 @@ __all__ = [
     "Stack",
     "StepResult",
     "initial_state",
+    "observe",
 ]
