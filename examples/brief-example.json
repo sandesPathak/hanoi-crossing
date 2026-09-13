@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "disks_per_player": 1,
+  "turn_order": ["A", "B", "A"],
+  "moves": [
+    { "action": "lift", "pole": "1a" },
+    { "action": "lift", "pole": "1b" },
+    { "action": "place", "pole": "3a" }
+  ]
+}
