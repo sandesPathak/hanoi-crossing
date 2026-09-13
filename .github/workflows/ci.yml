@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege by default. Any job needing more must ask for it explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Fail rather than silently reach out if a dependency is missing from the lockfile.
+  UV_FROZEN: "1"
+
+jobs:
+  quality:
+    name: Lint and type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+      - run: uv sync --all-groups
+      - name: ruff (lint)
+        run: uv run ruff check --output-format=github .
+      - name: ruff (format)
+        run: uv run ruff format --check .
+      - name: mypy
+        run: uv run mypy
+
+  test:
+    name: Test on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --all-groups
+      - run: uv run pytest
+
+  security:
+    name: Security checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # gitleaks needs history to scan past commits, not just the tip.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+      - run: uv sync --all-groups
+      - name: Audit dependencies for known vulnerabilities
+        # Audit the locked set, not the live environment: --strict would otherwise
+        # fail on this project itself, which is installed editable and not on PyPI.
+        run: |
+          uv export --format requirements-txt --no-emit-project --all-groups \
+            --no-hashes -q -o requirements-audit.txt
+          uv run pip-audit --strict -r requirements-audit.txt
+      - name: Scan history for committed secrets
+        # The CLI rather than gitleaks-action: the action scans the range the push
+        # event describes, which on an initial push is <root commit>^..HEAD -- and a
+        # root commit has no parent. Scanning the whole history has no such edge, and
+        # it drops a third-party action from the supply chain.
+        env:
+          GITLEAKS_VERSION: "8.24.3"
+        run: |
+          curl -sSfL --proto '=https' --tlsv1.2 \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --redact --no-banner
